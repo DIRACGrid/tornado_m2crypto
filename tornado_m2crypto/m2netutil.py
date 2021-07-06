@@ -6,7 +6,7 @@ DEFAULT_CONNECTION_TIMEOUT=30
 
 _SSL_CONTEXT_KEYWORDS = frozenset(['ssl_version', 'certfile', 'keyfile', 'dhparam',
                                    'cert_reqs', 'verify_depth', 'ca_certs', 'ciphers',
-                                   'debugSSL'])
+                                   'sslDebug'])
 
 def ssl_options_to_m2_context(ssl_options):
     """Try to convert an ``ssl_options`` dictionary to an

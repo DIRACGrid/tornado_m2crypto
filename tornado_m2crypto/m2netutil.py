@@ -1,12 +1,12 @@
 import socket
-from M2Crypto import SSL, m2
+from M2Crypto import SSL, m2,X509
 from os.path import isdir
 
 DEFAULT_CONNECTION_TIMEOUT=30
 
 _SSL_CONTEXT_KEYWORDS = frozenset(['ssl_version', 'certfile', 'keyfile', 'dhparam',
                                    'cert_reqs', 'verify_depth', 'ca_certs', 'ciphers',
-                                   'debugSSL'])
+                                   'sslDebug'])
 
 def ssl_options_to_m2_context(ssl_options):
     """Try to convert an ``ssl_options`` dictionary to an
@@ -59,6 +59,21 @@ def ssl_options_to_m2_context(ssl_options):
     if 'dhparam' in ssl_options:
         context.set_tmp_dh(ssl_options['dhparam'])
 
+    # If the version of M2Crypto is recent enough, there is an API
+    # to accept proxy certificate, and we do not need to rely on
+    # OPENSSL_ALLOW_PROXY_CERT environment variable
+    # which was removed as of openssl 1.1
+    # We set the proper verify flag to the X509Store of the context
+    # as described here https://www.openssl.org/docs/man1.1.1/man7/proxy-certificates.html
+    if hasattr(SSL, 'verify_allow_proxy_certs'):
+        context.get_cert_store().set_flags(SSL.verify_allow_proxy_certs)  # pylint: disable=no-member
+    # As of M2Crypto 0.37, the `verify_allow_proxy_certs` flag was moved
+    # to X509 (https://gitlab.com/m2crypto/m2crypto/-/merge_requests/238)
+    # It is more consistent with all the other flags,
+    # but pySSL had it in SSL. Well...
+    if hasattr(X509, 'verify_allow_proxy_certs'):
+        context.get_cert_store().set_flags(X509.verify_allow_proxy_certs)  # pylint: disable=no-member
+
 
     # Log the SSL info
     if ssl_options.get('sslDebug'):
@@ -83,7 +98,7 @@ def m2_wrap_socket(sock, ssl_options, server_hostname=None, **kwargs):
 
     """
 
-    # Note: do not attempt to do socket.settimeout, for it is for 
+    # Note: do not attempt to do socket.settimeout, for it is for
     # blocking sockets only
 
     context = ssl_options_to_m2_context(ssl_options)

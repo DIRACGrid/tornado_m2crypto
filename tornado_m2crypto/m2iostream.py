@@ -85,6 +85,7 @@ TODO: overwrite the close method to do like DIRAC M2SSLTransport.
 import errno
 import os
 import socket
+import ssl
 
 from tornado_m2crypto.m2netutil import m2_wrap_socket
 
@@ -188,7 +189,7 @@ class M2IOStream(SSLIOStream):
                 gen_log.error("Err Str: %s" % Err.get_error_reason(err_num))
                 return self.close()
         except SSL.SSLError as e:
-            raise
+            raise ssl.SSLError(*e.args)
         except socket.error as err:
             gen_log.error("Socket error!")
             # Some port scans (e.g. nmap in -sT mode) have been known
@@ -302,8 +303,7 @@ class M2IOStream(SSLIOStream):
                 if e.args[0] == m2.ssl_error_want_read:
                     return None
                 else:
-
-                    raise
+                    raise ssl.SSLError(*e.args)
             except socket.error as e:
                 if e.args[0] in _ERRNO_WOULDBLOCK:
                     return None

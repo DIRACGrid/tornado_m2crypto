@@ -229,7 +229,7 @@ class M2IOStream(SSLIOStream):
         validation mode and hostname.
         """
         checker = getattr(
-            self.socket, "postConnectionCheck", self.socket.serverPostConnectionCheck
+            self.socket, "postConnectionCheck", getattr(self.socket, "serverPostConnectionCheck", None)
         )
         addr = self.socket.socket.getpeername()[0]
         if checker and not checker(self.socket.get_peer_cert(), addr):

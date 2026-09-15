@@ -293,17 +293,28 @@ class M2IOStream(SSLIOStream):
                 # depending on the SSL version)
                 return None
             try:
-                return self.socket.recv_into(buf)
-            except TypeError as e:
-                # Bug in M2Crypto?
-                # TODO: This shouldn't use an exception path
-                #       Either Connection should be subclassed with a working
-                #       implementation of recv_into, or work out why it
-                #       sometimes gets a None returned anyway, it's probably
-                #       a race between the handshake and the first read?
-                # print("Nothing to read?", repr(e))
-
-                return None
+                # Do not use Connection.recv_into(): it cannot tell Tornado
+                # apart the two "no data" cases, and Tornado needs them
+                # distinguished (None == would block, 0 == EOF and close).
+                #
+                # m2.ssl_read() returns None when the read would block.  As of
+                # M2Crypto 0.46 it *also* returns None at EOF, where it used to
+                # return b"" -- and recv_into() maps that None to 0, so every
+                # would-block read looks like EOF and the connection is closed
+                # right after each response.  Ask OpenSSL which case it is.
+                data = m2.ssl_read(self.socket.ssl, len(buf), self.socket._timeout)
+                if data is None:
+                    err = m2.ssl_get_error(self.socket.ssl, 0)
+                    if err in (m2.ssl_error_want_read, m2.ssl_error_want_write):
+                        return None
+                    # ssl_error_zero_return (clean shutdown) or
+                    # ssl_error_syscall (peer vanished): a real EOF.
+                    return 0
+                nbytes = len(data)
+                buf[:nbytes] = data
+                # On M2Crypto < 0.46 an empty bytes object is the EOF marker,
+                # which is already the 0 that Tornado expects.
+                return nbytes
             except SSL.SSLError as e:
                 if e.args[0] == m2.ssl_error_want_read:
                     return None

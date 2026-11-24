@@ -16,7 +16,7 @@ setup(
     long_description_content_type='text/markdown',
     url='https://github.com/DIRACGrid/tornado_m2crypto',
     setup_requires=[
-        'setuptools_scm<6; python_version < "3"',
+        'setuptools_scm<11; python_version < "3"',
         'setuptools_scm; python_version >= "3"',
     ],
     install_requires=[
